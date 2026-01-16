@@ -9,6 +9,9 @@ import { Form } from "@/components/ui/form"
 import { toast } from "sonner"
 import TextField from "@/components/TextField" // Import your TextField component
 import { useRouter } from "next/navigation"
+import { auth } from "@/firebase/client"
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth"
+import { signIn, signUp } from "@/lib/actions/auth.action"
 
 
 const authFormSchema = (type: FormType) => {
@@ -33,18 +36,42 @@ const AuthForm = ({ type }: { type: FormType }) => {
     },
   })
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
+  async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
       if (type === "signup") {
-  toast.success("Account created successfully!");
+        const{ name, email, password } = values;
 
-  setTimeout(() => {
-    router.push("/sign-in");
-  }, 1000);
+        const userCredentials = await createUserWithEmailAndPassword(auth, email, password);
+
+        const result =await signUp({
+          uid: userCredentials.user.uid,
+          name: name!,
+          email,
+          password
+        })
+
+        if (!result?.success) {
+          toast.error(result?.message); //yahan dhayan dena haia 
+          return;
+        }
+
+        
+        
+        
+        toast.success("Account created successfully!");
+    router.push('/sign-in');
+ 
 }
-
-       else {
-        toast.success("Signed in successfully!");
+  else {
+    const { email, password } = values;
+    const userCredentials = await signInWithEmailAndPassword(auth, email, password);
+    const idToken = await userCredentials.user.getIdToken();
+        if(!idToken){
+          toast.error("sign in failed, please try again");
+          return;
+        }
+        await signIn({ email, idToken });
+        toast.success('signed in successfully!');
           router.push('/');
       }
     }
