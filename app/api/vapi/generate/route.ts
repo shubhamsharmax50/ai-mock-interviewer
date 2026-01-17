@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { google } from "@ai-sdk/google";
+import { xai } from "@ai-sdk/xai"; // 1. Changed from @ai-sdk/google
 import { NextResponse } from "next/server";
 
 import { db } from "@/firebase/admin";
@@ -28,9 +28,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3️⃣ Generate questions using Gemini
+    // 3️⃣ Generate questions using Grok (xAI)
     const { text } = await generateText({
-      model: google("gemini-2.0-flash"),
+      model: xai("grok-2-latest"), // 2. Changed model to Grok
       prompt: `Prepare questions for a job interview.
 The job role is ${role}.
 The job experience level is ${level}.
@@ -39,16 +39,19 @@ The focus between behavioural and technical questions should lean towards: ${typ
 The amount of questions required is: ${questionCount}.
 Return ONLY a JSON array like:
 ["Question 1", "Question 2"]
-No extra text.`,
+No extra text or markdown code blocks.`,
     });
 
     // 4️⃣ Clean & parse AI response safely
     let parsedQuestions: string[];
 
     try {
+      // Grok is usually good at following "No extra text", 
+      // but we keep the cleaner just in case.
       const cleanedText = text.replace(/```json|```/g, "").trim();
       parsedQuestions = JSON.parse(cleanedText);
-    } catch {
+    } catch (e) {
+      console.error("JSON Parsing Error:", text);
       return NextResponse.json(
         { success: false, error: "AI returned invalid JSON" },
         { status: 500 }
@@ -88,7 +91,6 @@ No extra text.`,
   }
 }
 
-// Optional GET route
 export async function GET() {
   return NextResponse.json(
     { success: true, message: "Interview API is running" },
