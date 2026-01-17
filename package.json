@@ -2,12 +2,12 @@
   "name": "my-app",
   "version": "0.1.0",
   "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build ",
-    "start": "next start",
-    "lint": "next lint"
-  },
+"scripts": {
+  "dev": "next dev",
+  "build": "next build", 
+  "start": "next start",
+  "lint": "next lint"
+},
   "dependencies": {
     "@ai-sdk/xai": "^3.0.26",
     "@hookform/resolvers": "^5.2.2",
@@ -33,7 +33,7 @@
     "zod": "^4.2.1"
   },
   "devDependencies": {
-    "@types/node": "^20",
+    "@types/node": "^18",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.23",

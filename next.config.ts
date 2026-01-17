@@ -1,12 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  typescript: {
-    ignoreDuringBuilds: true,
-  },
+  /* Removed 'eslint' and 'typescript' keys as they are no longer 
+     supported here in Next.js 16.
+  */
 };
 
 export default nextConfig;
