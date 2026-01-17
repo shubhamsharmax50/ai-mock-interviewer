@@ -1,5 +1,5 @@
 import { generateText } from "ai";
-import { google } from "@ai-sdk/google";
+import { groq } from "@ai-sdk/groq"; // 1. Change this import
 import { NextResponse } from "next/server";
 
 import { db } from "@/firebase/admin";
@@ -8,11 +8,9 @@ import { FieldValue } from "firebase-admin/firestore";
 
 export async function POST(request: Request) {
   try {
-    // 1️⃣ Parse request body
-    const { type, role, level, techstack, amount, userid } =
-      await request.json();
+    const { type, role, level, techstack, amount, userid } = await request.json();
 
-    // 2️⃣ Validate required fields
+    // Validate required fields
     if (!type || !role || !level || !techstack || !amount || !userid) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
@@ -28,9 +26,9 @@ export async function POST(request: Request) {
       );
     }
 
-    // 3️⃣ Generate questions using Gemini
+    // Generate questions using Groq
     const { text } = await generateText({
-      model: google("gemini-2.0-flash"),
+      model: groq("llama-3.3-70b-versatile"),
       prompt: `Prepare questions for a job interview.
 The job role is ${role}.
 The job experience level is ${level}.
@@ -42,27 +40,19 @@ Return ONLY a JSON array like:
 No extra text.`,
     });
 
-    // 4️⃣ Clean & parse AI response safely
+    // ... (The rest of your cleaning, parsing, and Firebase code remains exactly the same)
     let parsedQuestions: string[];
-
     try {
       const cleanedText = text.replace(/```json|```/g, "").trim();
       parsedQuestions = JSON.parse(cleanedText);
     } catch {
-      return NextResponse.json(
-        { success: false, error: "AI returned invalid JSON" },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, error: "AI returned invalid JSON" }, { status: 500 });
     }
 
     if (!Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
-      return NextResponse.json(
-        { success: false, error: "No questions generated" },
-        { status: 500 }
-      );
+      return NextResponse.json({ success: false, error: "No questions generated" }, { status: 500 });
     }
 
-    // 5️⃣ Prepare Firestore document
     const interview = {
       role,
       type,
@@ -75,23 +65,11 @@ No extra text.`,
       createdAt: FieldValue.serverTimestamp(),
     };
 
-    // 6️⃣ Save to Firestore
     await db.collection("interviews").add(interview);
 
     return NextResponse.json({ success: true }, { status: 200 });
   } catch (error) {
     console.error("API Error:", error);
-    return NextResponse.json(
-      { success: false, error: "Internal Server Error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
   }
-}
-
-// Optional GET route
-export async function GET() {
-  return NextResponse.json(
-    { success: true, message: "Interview API is running" },
-    { status: 200 }
-  );
 }

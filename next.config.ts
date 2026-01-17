@@ -1,11 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
   typescript: {
-    ignoreDuringBuilds: true,
+    tsconfigPath: "./tsconfig.json",
   },
 };
 

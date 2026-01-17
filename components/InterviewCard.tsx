@@ -6,16 +6,18 @@ import Link from 'next/link';
 import DisplayTechIcons from './DisplayTechIcons';
 
 interface InterviewCardProps {
-    interviewId: string;
-    userId: string;
+    interviewId?: string;
+    id?: string;
+    userId?: string;
     role: string;
     type: string;
     techstack: string[];
     createdAt: string | Date;
 }
 
-const InterviewCard = ({interviewId, userId, role, type, techstack, createdAt}: InterviewCardProps) => {
-    const feedback = null;
+const InterviewCard = ({interviewId, id, userId, role, type, techstack, createdAt}: InterviewCardProps) => {
+    const finalInterviewId = interviewId || id;
+    const feedback: any = null;
     const normalizedType = /mix/gi.test(type) ? 'Mixed' : type;
     const formattedDate = dayjs(feedback?.createdAt || createdAt).format('DD/MM/YYYY');
 
