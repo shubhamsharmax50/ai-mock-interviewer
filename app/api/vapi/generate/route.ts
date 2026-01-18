@@ -73,3 +73,26 @@ No extra text.`,
     return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+export async function GET() {
+  return NextResponse.json(
+    {
+      success: true,
+      message: "Interview Generation API",
+      description: "Use POST method to generate interview questions",
+      usage: {
+        method: "POST",
+        endpoint: "/api/vapi/generate",
+        body: {
+          type: "technical|behavioral|mixed",
+          role: "e.g., Frontend Developer",
+          level: "e.g., Junior|Mid|Senior",
+          techstack: "e.g., React,TypeScript,Next.js",
+          amount: "number of questions (e.g., 7)",
+          userid: "user's unique id"
+        }
+      }
+    },
+    { status: 200 }
+  );
+}
