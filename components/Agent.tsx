@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import Image from "next/image";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 // enum for call status
 enum CallStatus {
@@ -12,28 +12,73 @@ enum CallStatus {
   FINISHED = "FINISHED",
 }
 
-interface AgentProps {
-  userName: string;
-  userId: string;        // ✅ ADDED
-  type: "generate" | "interview"; // ✅ ADDED (strict & safe)
+interface SavedMessage {
+  role: "user" | "system" | "assistant";
+  content: string;
 }
 
-export default function Agent({ userName, userId, type }: AgentProps) {
+export default function Agent({ userName }: AgentProps) {
   // you may use userId/type later (auth, logs, analytics, etc.)
-  // console.log(userId, type);
-
-  const isSpeaking = true;
-
-  const messages = [
-    "What's your name?",
-    "My name is John Doe, nice to meet you!",
-  ];
-
-  const lastMessage = messages[messages.length - 1];
+  const [isSpeaking, setIsSpeaking] = useState(false);
 
   const [callStatus, setCallStatus] = useState<CallStatus>(
     CallStatus.INACTIVE
   );
+const [messages, setMessages] = useState<SavedMessage[]>([]);
+    const lastMessage = messages[messages.length - 1];
+
+    useEffect(() => {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const onCallStart = () => {
+        setCallStatus(CallStatus.ACTIVE);
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const onCallEnd = () => {
+        setCallStatus(CallStatus.FINISHED);
+      };
+
+      interface VapiMessage {
+        type: string;
+        transcriptType?: string;
+        role: string;
+        transcript: string;
+      }
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const onMessage = (message: VapiMessage) => {
+        if (message.type === "transcript" && message.transcriptType === "final") {
+          const newMessage: SavedMessage = {
+            role: message.role as "user" | "system" | "assistant",
+            content: message.transcript,
+          };
+          setMessages((prev) => [...prev, newMessage]);
+        }
+      };
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const onSpeechStart = () => setIsSpeaking(true);
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const onSpeechEnd = () => setIsSpeaking(false);
+
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const onError = (error: Error) => {
+        console.error("Error:", error);
+      };
+
+      // Note: These handlers need to be connected to your Vapi client
+      // Example: vapiClient.on("call-start", onCallStart);
+      // vapiClient.on("call-end", onCallEnd);
+      // vapiClient.on("message", onMessage);
+      // vapiClient.on("speech-start", onSpeechStart);
+      // vapiClient.on("speech-end", onSpeechEnd);
+      // vapiClient.on("error", onError);
+
+      return () => {
+        // Cleanup listeners here if needed
+      };
+    }, []);
 
   return (
     <>
@@ -70,14 +115,14 @@ export default function Agent({ userName, userId, type }: AgentProps) {
         <div className="transcript-border">
           <div className="transcript">
             <p
-              key={lastMessage}
+              key={messages.length - 1}
               className={cn(
                 "transcript-opacity",
                 "duration-500 opacity-0",
                 "animate-fadeIn opacity-100"
               )}
             >
-              {lastMessage}
+              {lastMessage?.content}
             </p>
           </div>
         </div>
