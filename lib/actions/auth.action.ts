@@ -1,6 +1,7 @@
 "use server";
 
 import { auth, db } from "@/firebase/admin";
+import { CollectionReference, DocumentData, Query } from "firebase-admin/firestore";
 import { cookies } from "next/headers";
 
 // Session duration (1 week)
@@ -130,4 +131,79 @@ export async function getCurrentUser(): Promise<User | null> {
 export async function isAuthenticated() {
   const user = await getCurrentUser();
   return !!user;
+}
+
+export async function getInterviewsByUserId(userId: string): Promise<Interview[] | null> {
+  try {
+    const interviews = await db
+      .collection("interviews")
+      .where("userId", "==", userId)
+      .orderBy("createdAt", "desc")
+      .get();
+
+    return interviews.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Interview[];
+  } catch (error) {
+    console.error("Error fetching interviews:", error);
+    return null;
+  }
+}
+export async function getLatestInterviews(params: GetLatestInterviewsParams): Promise<Interview[] | null> {
+  const { userId, limit = 20 } = params;
+  
+  try {
+    const interviews = await db
+      .collection("interviews")
+      .orderBy("createdAt", "desc")
+      .where("finalized", "==", true)
+      .where("userId", "!=", userId)
+      .limit(limit)
+      .get();
+
+    return interviews.docs.map((doc) => ({
+      id: doc.id,
+      ...doc.data(),
+    })) as Interview[];
+  } catch (error) {
+    console.error("Error fetching latest interviews:", error);
+    return null;
+  }
+}
+
+// Save interview to database
+export async function saveInterview(params: SaveInterviewParams) {
+  const { userId, type, transcript, duration, role = "Unknown", level = "Mid", techstack = [] } = params;
+
+  try {
+    const interviewRef = await db.collection("interviews").add({
+      userId,
+      type,
+      transcript,
+      duration,
+      role,
+      level,
+      techstack: techstack || [],
+      finalized: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      score: 0, // Can be calculated later
+      feedback: "", // Can be added later
+    });
+
+    console.log("✅ Interview saved with ID:", interviewRef.id);
+    
+    return {
+      success: true,
+      interviewId: interviewRef.id,
+      message: "Interview saved successfully",
+    };
+  } catch (error) {
+    console.error("Error saving interview:", error);
+    return {
+      success: false,
+      message: "Failed to save interview",
+    };
+  }
 }

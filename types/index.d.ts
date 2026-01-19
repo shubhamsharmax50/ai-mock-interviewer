@@ -54,6 +54,9 @@ interface AgentProps {
   feedbackId?: string;
   type: "generate" | "interview";
   questions?: string[];
+  role?: string;
+  level?: string;
+  techstack?: string[];
 }
 
 interface RouteParams {
@@ -69,6 +72,16 @@ interface GetFeedbackByInterviewIdParams {
 interface GetLatestInterviewsParams {
   userId: string;
   limit?: number;
+}
+
+interface SaveInterviewParams {
+  userId: string;
+  type: string;
+  transcript: string;
+  duration: number;
+  role?: string;
+  level?: string;
+  techstack?: string[];
 }
 
 interface SignInParams {

@@ -5,6 +5,7 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { vapi } from '@/lib/vapi.sdk';
 import { useRouter } from "next/navigation";
+import { saveInterview } from "@/lib/actions/auth.action";
 
 // enum for call status
 enum CallStatus {
@@ -19,7 +20,7 @@ interface SavedMessage {
   content: string;
 }
 
-export default function Agent({ userName, userId, type }: AgentProps) {
+export default function Agent({ userName, userId, type, role, level, techstack }: AgentProps) {
   const router = useRouter();
   // you may use userId/type later (auth, logs, analytics, etc.)
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -74,23 +75,12 @@ const [messages, setMessages] = useState<SavedMessage[]>([]);
         console.error("❌ Vapi Error:", error);
       };
 
-      const onSpeaker = (data: any) => {
-        console.log("🔊 Speaker data received:", data);
-      };
-
-      const onVolumeLevel = (level: number) => {
-        console.log("📊 Volume level:", level);
-      };
-
       vapi.on("call-start", onCallStart);
       vapi.on("call-end", onCallEnd);
       vapi.on("message", onMessage);
       vapi.on("speech-start", onSpeechStart);
       vapi.on("speech-end", onSpeechEnd);
       vapi.on("error", onError);
-      vapi.on("speaker-start", onSpeaker);
-      vapi.on("speaker-stop", onSpeaker);
-      vapi.on("volume-level", onVolumeLevel);
 
       return () => {
         vapi.off("call-start", onCallStart);
@@ -99,17 +89,42 @@ const [messages, setMessages] = useState<SavedMessage[]>([]);
         vapi.off("speech-start", onSpeechStart);
         vapi.off("speech-end", onSpeechEnd);
         vapi.off("error", onError);
-        vapi.off("speaker-start", onSpeaker);
-        vapi.off("speaker-stop", onSpeaker);
-        vapi.off("volume-level", onVolumeLevel);
       };
     }, []);
 
   useEffect(() => {
     if (callStatus === CallStatus.FINISHED) {
-      router.push('/');
+      // Save interview to database
+      const saveAndRedirect = async () => {
+        try {
+          const transcript = messages
+            .map((msg) => `${msg.role}: ${msg.content}`)
+            .join("\n");
+
+          await saveInterview({
+            userId,
+            type,
+            transcript,
+            duration: 0, // Can track duration if needed
+            role: role || "Unknown Role",
+            level: level || "Mid",
+            techstack: techstack || [],
+          });
+
+          console.log("✅ Interview saved and redirecting...");
+        } catch (error) {
+          console.error("Error saving interview:", error);
+        } finally {
+          // Redirect after a short delay
+          setTimeout(() => {
+            router.push("/");
+          }, 1000);
+        }
+      };
+
+      saveAndRedirect();
     }
-  }, [messages, callStatus, type, userId, router]);
+  }, [callStatus, messages, type, userId, router]);
 
   const handleCall = async () => {
     try {

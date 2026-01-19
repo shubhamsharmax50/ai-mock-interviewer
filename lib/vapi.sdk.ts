@@ -7,7 +7,8 @@ const vapi = new Vapi(process.env.NEXT_PUBLIC_VAPI_WEB_TOKEN || "");
 if (typeof window !== "undefined") {
   const initAudioContext = async () => {
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const audioContext = new AudioContextClass();
       if (audioContext.state === "suspended") {
         await audioContext.resume();
         console.log("✅ Web Audio Context resumed");
