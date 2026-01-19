@@ -1,58 +1,60 @@
-import { generateText } from "ai";
-import { groq } from "@ai-sdk/groq"; // 1. Change this import
+import { generateObject } from "ai";
+import { groq } from "@ai-sdk/groq";
 import { NextResponse } from "next/server";
-
 import { db } from "@/firebase/admin";
 import { getRandomInterviewCover } from "@/lib/utils";
 import { FieldValue } from "firebase-admin/firestore";
+import { z } from "zod";
+
+// Helper for CORS headers
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*", // Replace with your domain in production
+  "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+};
+
+// 1. Handle Preflight OPTIONS request (Fixes CORS error)
+export async function OPTIONS() {
+  return NextResponse.json({}, { headers: corsHeaders });
+}
 
 export async function POST(request: Request) {
   try {
-    const { type, role, level, techstack, amount, userid } = await request.json();
+    const body = await request.json();
+    const { type, role, level, techstack, amount, userid } = body;
 
     // Validate required fields
     if (!type || !role || !level || !techstack || !amount || !userid) {
       return NextResponse.json(
         { success: false, error: "Missing required fields" },
-        { status: 400 }
+        { status: 400, headers: corsHeaders }
       );
     }
 
     const questionCount = Number(amount);
-    if (isNaN(questionCount) || questionCount <= 0) {
+
+    // 2. Generate structured objects (Guarantees valid JSON without manual parsing)
+    const { object } = await generateObject({
+      model: groq("llama-3.3-70b-versatile"),
+      schema: z.object({
+        questions: z.array(z.string()).describe("A list of interview questions"),
+      }),
+      system: "You are a professional hiring manager. Generate clear, concise interview questions.",
+      prompt: `Generate exactly ${questionCount} questions for a ${level} ${role} interview. 
+               Focus: ${type}. 
+               Tech Stack: ${techstack}.`,
+    });
+
+    const parsedQuestions = object.questions;
+
+    if (!parsedQuestions || parsedQuestions.length === 0) {
       return NextResponse.json(
-        { success: false, error: "Invalid amount value" },
-        { status: 400 }
+        { success: false, error: "No questions generated" },
+        { status: 500, headers: corsHeaders }
       );
     }
 
-    // Generate questions using Groq
-    const { text } = await generateText({
-      model: groq("llama-3.3-70b-versatile"),
-      prompt: `Prepare questions for a job interview.
-The job role is ${role}.
-The job experience level is ${level}.
-The tech stack used in the job is: ${techstack}.
-The focus between behavioural and technical questions should lean towards: ${type}.
-The amount of questions required is: ${questionCount}.
-Return ONLY a JSON array like:
-["Question 1", "Question 2"]
-No extra text.`,
-    });
-
-    // ... (The rest of your cleaning, parsing, and Firebase code remains exactly the same)
-    let parsedQuestions: string[];
-    try {
-      const cleanedText = text.replace(/```json|```/g, "").trim();
-      parsedQuestions = JSON.parse(cleanedText);
-    } catch {
-      return NextResponse.json({ success: false, error: "AI returned invalid JSON" }, { status: 500 });
-    }
-
-    if (!Array.isArray(parsedQuestions) || parsedQuestions.length === 0) {
-      return NextResponse.json({ success: false, error: "No questions generated" }, { status: 500 });
-    }
-
+    // 3. Save to Firebase
     const interview = {
       role,
       type,
@@ -67,10 +69,17 @@ No extra text.`,
 
     await db.collection("interviews").add(interview);
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    return NextResponse.json(
+      { success: true, questions: parsedQuestions }, 
+      { status: 200, headers: corsHeaders }
+    );
+
   } catch (error) {
     console.error("API Error:", error);
-    return NextResponse.json({ success: false, error: "Internal Server Error" }, { status: 500 });
+    return NextResponse.json(
+      { success: false, error: "Internal Server Error" },
+      { status: 500, headers: corsHeaders }
+    );
   }
 }
 
@@ -79,20 +88,8 @@ export async function GET() {
     {
       success: true,
       message: "Interview Generation API",
-      description: "Use POST method to generate interview questions",
-      usage: {
-        method: "POST",
-        endpoint: "/api/vapi/generate",
-        body: {
-          type: "technical|behavioral|mixed",
-          role: "e.g., Frontend Developer",
-          level: "e.g., Junior|Mid|Senior",
-          techstack: "e.g., React,TypeScript,Next.js",
-          amount: "number of questions (e.g., 7)",
-          userid: "user's unique id"
-        }
-      }
+      usage: "Use POST method with type, role, level, techstack, amount, and userid",
     },
-    { status: 200 }
+    { status: 200, headers: corsHeaders }
   );
 }

@@ -3,6 +3,8 @@
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { useEffect, useState } from "react";
+import { vapi } from '@/lib/vapi.sdk';
+import { useRouter } from "next/navigation";
 
 // enum for call status
 enum CallStatus {
@@ -17,7 +19,8 @@ interface SavedMessage {
   content: string;
 }
 
-export default function Agent({ userName }: AgentProps) {
+export default function Agent({ userName, userId, type }: AgentProps) {
+  const router = useRouter();
   // you may use userId/type later (auth, logs, analytics, etc.)
   const [isSpeaking, setIsSpeaking] = useState(false);
 
@@ -28,13 +31,13 @@ const [messages, setMessages] = useState<SavedMessage[]>([]);
     const lastMessage = messages[messages.length - 1];
 
     useEffect(() => {
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const onCallStart = () => {
+        console.log("✅ Call started event received");
         setCallStatus(CallStatus.ACTIVE);
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const onCallEnd = () => {
+        console.log("✅ Call ended event received");
         setCallStatus(CallStatus.FINISHED);
       };
 
@@ -45,40 +48,109 @@ const [messages, setMessages] = useState<SavedMessage[]>([]);
         transcript: string;
       }
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const onMessage = (message: VapiMessage) => {
+        console.log("📨 Message received:", message);
         if (message.type === "transcript" && message.transcriptType === "final") {
           const newMessage: SavedMessage = {
             role: message.role as "user" | "system" | "assistant",
             content: message.transcript,
           };
           setMessages((prev) => [...prev, newMessage]);
+          console.log("💬 Transcript added:", newMessage);
         }
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const onSpeechStart = () => setIsSpeaking(true);
-
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const onSpeechEnd = () => setIsSpeaking(false);
-
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const onError = (error: Error) => {
-        console.error("Error:", error);
+      const onSpeechStart = () => {
+        console.log("🎤 User speaking started");
+        setIsSpeaking(true);
       };
 
-      // Note: These handlers need to be connected to your Vapi client
-      // Example: vapiClient.on("call-start", onCallStart);
-      // vapiClient.on("call-end", onCallEnd);
-      // vapiClient.on("message", onMessage);
-      // vapiClient.on("speech-start", onSpeechStart);
-      // vapiClient.on("speech-end", onSpeechEnd);
-      // vapiClient.on("error", onError);
+      const onSpeechEnd = () => {
+        console.log("🔇 User speaking ended");
+        setIsSpeaking(false);
+      };
+
+      const onError = (error: Error) => {
+        console.error("❌ Vapi Error:", error);
+      };
+
+      const onSpeaker = (data: any) => {
+        console.log("🔊 Speaker data received:", data);
+      };
+
+      const onVolumeLevel = (level: number) => {
+        console.log("📊 Volume level:", level);
+      };
+
+      vapi.on("call-start", onCallStart);
+      vapi.on("call-end", onCallEnd);
+      vapi.on("message", onMessage);
+      vapi.on("speech-start", onSpeechStart);
+      vapi.on("speech-end", onSpeechEnd);
+      vapi.on("error", onError);
+      vapi.on("speaker-start", onSpeaker);
+      vapi.on("speaker-stop", onSpeaker);
+      vapi.on("volume-level", onVolumeLevel);
 
       return () => {
-        // Cleanup listeners here if needed
+        vapi.off("call-start", onCallStart);
+        vapi.off("call-end", onCallEnd);
+        vapi.off("message", onMessage);
+        vapi.off("speech-start", onSpeechStart);
+        vapi.off("speech-end", onSpeechEnd);
+        vapi.off("error", onError);
+        vapi.off("speaker-start", onSpeaker);
+        vapi.off("speaker-stop", onSpeaker);
+        vapi.off("volume-level", onVolumeLevel);
       };
     }, []);
+
+  useEffect(() => {
+    if (callStatus === CallStatus.FINISHED) {
+      router.push('/');
+    }
+  }, [messages, callStatus, type, userId, router]);
+
+  const handleCall = async () => {
+    try {
+      setCallStatus(CallStatus.CONNECTING);
+      console.log("Starting Vapi call with workflow:", process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID);
+      
+      // Request microphone permissions first
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        console.log("✅ Microphone permission granted");
+        // Stop the stream since we just needed permission
+        stream.getTracks().forEach(track => track.stop());
+      } catch (error) {
+        console.error("❌ Microphone permission denied:", error);
+        setCallStatus(CallStatus.INACTIVE);
+        alert("Microphone permission is required for the interview. Please allow microphone access.");
+        return;
+      }
+      
+      await vapi.start(process.env.NEXT_PUBLIC_VAPI_WORKFLOW_ID!, {
+        variableValues: {
+          username: userName,
+          userid: userId,
+        }
+      });
+      console.log("Vapi call started successfully");
+    } catch (error) {
+      console.error("Error starting Vapi call:", error);
+      setCallStatus(CallStatus.INACTIVE);
+    }
+  };
+
+  const handleDisconnect = async () => {
+    try {
+      setCallStatus(CallStatus.FINISHED);
+      await vapi.stop();
+      console.log("Vapi call ended");
+    } catch (error) {
+      console.error("Error stopping Vapi call:", error);
+    }
+  };
 
   return (
     <>
@@ -130,7 +202,7 @@ const [messages, setMessages] = useState<SavedMessage[]>([]);
 
       <div className="w-full flex justify-center">
         {callStatus !== CallStatus.ACTIVE ? (
-          <button className="relative btn-connect">
+          <button onClick={handleCall} className="relative btn-connect">
             <span
               className={cn(
                 "absolute animate-ping rounded-full opacity-75",
@@ -145,7 +217,7 @@ const [messages, setMessages] = useState<SavedMessage[]>([]);
             </span>
           </button>
         ) : (
-          <button className="btn-disconnect">End</button>
+          <button onClick={handleDisconnect} className="btn-disconnect">End</button>
         )}
       </div>
     </>

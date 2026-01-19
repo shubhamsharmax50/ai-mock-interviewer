@@ -17,8 +17,8 @@ export default function RootLayout({
   children: ReactNode;
 }) {
   return (
-    <html lang="en">
-      <body className={`${inter.className} antialiased pattern`}>
+    <html lang="en" className="dark">
+      <body className={`${inter.className} antialiased pattern bg-background text-foreground min-h-screen`}>
         {children}
         <Toaster
           position="bottom-right"
