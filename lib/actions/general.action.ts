@@ -85,7 +85,7 @@ export async function createFeedback(params: CreateFeedbackParams) {
 /**
  * 2. GET INTERVIEW BY ID
  */
-export async function getInterviewById(id: string) {
+export async function getInterviewById(id: string): Promise<any> {
   try {
     const doc = await db.collection("interviews").doc(id).get();
     if (!doc.exists) return null;
@@ -99,7 +99,7 @@ export async function getInterviewById(id: string) {
 /**
  * 3. GET FEEDBACK BY INTERVIEW ID
  */
-export async function getFeedbackByInterviewId(params: GetFeedbackByInterviewIdParams) {
+export async function getFeedbackByInterviewId(params: GetFeedbackByInterviewIdParams): Promise<any> {
   const { interviewId, userId} = params;
 
   try {
@@ -124,7 +124,7 @@ export async function getFeedbackByInterviewId(params: GetFeedbackByInterviewIdP
  * 4. GET LATEST INTERVIEWS (Excluding current user)
  * NOTE: This query requires a Firestore Composite Index.
  */
-export async function getLatestInterviews(params: GetLatestInterviewsParams) {
+export async function getLatestInterviews(params: GetLatestInterviewsParams): Promise<any> {
   const { userId, limit = 20 } = params;
 
   try {
@@ -150,7 +150,7 @@ export async function getLatestInterviews(params: GetLatestInterviewsParams) {
 /**
  * 5. GET INTERVIEWS BY USER ID
  */
-export async function getInterviewsByUserId(userId: string) {
+export async function getInterviewsByUserId(userId: string): Promise<any> {
   try {
     const interviews = await db
       .collection("interviews")

@@ -18,7 +18,7 @@ const page = async () => {
 
   // Fetch feedback for user interviews
   const userInterviewsWithFeedback = await Promise.all(
-    (userInterviews || []).map(async (interview) => ({
+    (userInterviews || []).map(async (interview: any) => ({
       ...interview,
       feedback: await getFeedbackByInterviewId({
         interviewId: interview.id,
@@ -92,7 +92,7 @@ const page = async () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
             {hasUpcomingInterviews ? (
-              latestInterviews?.map((interview) => (
+              latestInterviews?.map((interview: any) => (
                  <InterviewCard  {...interview} key={interview.id}/>
               ))
             ) : (

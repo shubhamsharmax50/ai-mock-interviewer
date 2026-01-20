@@ -5,8 +5,6 @@ import Image from "next/image";
 import { useEffect, useState } from "react";
 import { vapi } from '@/lib/vapi.sdk';
 import { useRouter } from "next/navigation";
-import { saveInterview } from "@/lib/actions/auth.action";
-import { interviewer } from "@/constants";
 import { createFeedback } from "@/lib/actions/general.action";
 
 // enum for call status
