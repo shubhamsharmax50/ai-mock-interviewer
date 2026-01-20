@@ -26,6 +26,17 @@ interface GetLatestInterviewsParams {
   limit?: number;
 }
 
+interface Interview {
+  id: string;
+  userId: string;
+  role: string;
+  type: string;
+  techstack: string[];
+  questions?: string[];
+  createdAt: any;
+  [key: string]: any;
+}
+
 /**
  * 1. CREATE FEEDBACK (Refactored to Groq)
  */
@@ -85,11 +96,11 @@ export async function createFeedback(params: CreateFeedbackParams) {
 /**
  * 2. GET INTERVIEW BY ID
  */
-export async function getInterviewById(id: string): Promise<any> {
+export async function getInterviewById(id: string): Promise<Interview | null> {
   try {
     const doc = await db.collection("interviews").doc(id).get();
     if (!doc.exists) return null;
-    return { id: doc.id, ...doc.data() };
+    return { id: doc.id, ...doc.data() } as Interview;
   } catch (error) {
     console.error("Error fetching interview:", error);
     return null;
