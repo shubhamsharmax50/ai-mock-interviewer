@@ -2,23 +2,33 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import React from 'react'
-import { dummyInterviews } from '@/constants'
 import InterviewCard from '@/components/InterviewCard'
-import { getCurrentUser, getInterviewsByUserId, getLatestInterviews } from '@/lib/actions/auth.action'
+import { getCurrentUser } from '@/lib/actions/auth.action';
+import { getInterviewsByUserId, getLatestInterviews, getFeedbackByInterviewId } from '@/lib/actions/general.action'
 
 const page = async () => {
-  const user =await getCurrentUser();
+  const user = await getCurrentUser();
+
+  if (!user?.id) return null;
 
   const [userInterviews, latestInterviews] = await Promise.all([
-    await getInterviewsByUserId(user?.id!),
-    await getLatestInterviews({ userId: user?.id! }),
+    await getInterviewsByUserId(user.id),
+    await getLatestInterviews({ userId: user.id }),
   ]);
 
-
-  
+  // Fetch feedback for user interviews
+  const userInterviewsWithFeedback = await Promise.all(
+    (userInterviews || []).map(async (interview) => ({
+      ...interview,
+      feedback: await getFeedbackByInterviewId({
+        interviewId: interview.id,
+        userId: user.id!,
+      }),
+    }))
+  );
 
   const hasPastInterviews = (userInterviews?.length ?? 0) > 0;
-  const hasUpcomingInterviews= (latestInterviews?.length ?? 0) > 0;
+  const hasUpcomingInterviews = (latestInterviews?.length ?? 0) > 0;
   return (
 
     /* pt-2 reduces the gap between the logo and the hero card */
@@ -66,7 +76,7 @@ const page = async () => {
           {/* GRID FIX: Ensure grid-cols and gap-6 are present to stop cards from touching */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 w-full">
             {hasPastInterviews ? (
-              userInterviews?.map((interview) => (
+              userInterviewsWithFeedback?.map((interview) => (
                  <InterviewCard  {...interview} key={interview.id}/>
               ))
             ) : (

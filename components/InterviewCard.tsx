@@ -4,6 +4,7 @@ import Image from 'next/image';
 import { getRandomInterviewCover } from '@/lib/utils';
 import Link from 'next/link';
 import DisplayTechIcons from './DisplayTechIcons';
+import { getFeedbackByInterviewId } from '@/lib/actions/general.action';
 
 interface InterviewCardProps {
     interviewId?: string;
@@ -15,11 +16,12 @@ interface InterviewCardProps {
     createdAt: string | Date;
 }
 
-const InterviewCard = ({interviewId, id, userId, role, type, techstack, createdAt}: InterviewCardProps) => {
-    const finalInterviewId = interviewId || id;
-    const feedback: any = null;
+const InterviewCard =  async ({interviewId, id, userId, role, type, techstack, createdAt}: InterviewCardProps) => {
+    const feedback = userId && id
+    ? await  getFeedbackByInterviewId({ interviewId: id, userId })
+    : null;
     const normalizedType = /mix/gi.test(type) ? 'Mixed' : type;
-    const formattedDate = dayjs(feedback?.createdAt || createdAt).format('DD/MM/YYYY');
+    const formattedDate = dayjs(feedback?.createdAt || createdAt || new Date()).format('MMM D, YYYY');
 
   return (
    /* FIXED: Changed w-[360px] to w-full so it fits the grid */
@@ -57,10 +59,12 @@ const InterviewCard = ({interviewId, id, userId, role, type, techstack, createdA
             <div className="flex flex-row justify-between items-center mt-6">
                 <DisplayTechIcons techStack={techstack} />
                 <Link 
-                    href={`/interview/${interviewId}`}
-                    className="btn-primary px-4 py-2 rounded-md text-sm bg-indigo-600 text-white"
-                >
-                    View Interview
+                    href={feedback
+                        ? `/interview/${id}/feedback`
+                        : `/interview/${id}`
+                    }>
+                   
+                    {feedback ? 'check Feedback' : 'View Interview'}
                 </Link>
             </div>
         </div>
